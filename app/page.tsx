@@ -6,14 +6,15 @@ import { useSearchParams } from 'next/navigation';
 import { LANGUAGE_GROUPS, LanguageGroup } from './data/languages';
 import { MEDICINE_PINS } from './data/medicines';
 import { FOOD_PINS } from './data/foods';
-import { PinCategory, MedicinePin, FoodPin } from './data/pins';
-import SearchBar from './components/SearchBar';
-import BottomDrawer, { DrawerItem } from './components/BottomDrawer';
+import { MedicinePin, FoodPin } from './data/pins';
+import { PROVINCES } from './data/provinces';
+import { PROVINCE_INDEX } from './data/provinceIndex';
+import UnifiedSearch from './components/UnifiedSearch';
+import ProvincePanel, { DrawerItem } from './components/ProvincePanel';
 import LeadCaptureModal from './components/LeadCaptureModal';
-import CategoryToggles from './components/CategoryToggles';
 import ContributeModal from './components/ContributeModal';
 
-const MapComponent = dynamic(() => import('./components/MapComponent'), {
+const ProvinceMap = dynamic(() => import('./components/ProvinceMap'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full flex items-center justify-center bg-surface-50">
@@ -25,103 +26,149 @@ const MapComponent = dynamic(() => import('./components/MapComponent'), {
   ),
 });
 
+// Resolve a province name to province ID
+function resolveProvinceIdFromName(name: string): string | null {
+  const lower = name.toLowerCase().trim();
+  const aliases: Record<string, string> = {
+    'chimbu': 'simbu', 'northern': 'oro', 'west sepik': 'sandaun',
+  };
+  const normalized = aliases[lower] || lower;
+  return PROVINCES.find(p => p.name.toLowerCase() === normalized || p.id === normalized)?.id || null;
+}
+
 function MapPageInner() {
-  const [drawerItem, setDrawerItem] = useState<DrawerItem | null>(null);
+  const [selectedProvinceId, setSelectedProvinceId] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<DrawerItem | null>(null);
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [showContribute, setShowContribute] = useState(false);
-  const [activeCategories, setActiveCategories] = useState<Set<PinCategory>>(new Set(['language']));
   const searchParams = useSearchParams();
 
   // Deep link support
   useEffect(() => {
-    const langId = searchParams.get('lang');
-    if (langId) {
-      const lang = LANGUAGE_GROUPS.find(l => l.id === langId);
+    const provinceParam = searchParams.get('province');
+    const itemParam = searchParams.get('item');
+    const legacyLang = searchParams.get('lang');
+
+    if (provinceParam) {
+      setSelectedProvinceId(provinceParam);
+
+      if (itemParam) {
+        // Find item in this province
+        const data = PROVINCE_INDEX[provinceParam];
+        if (data) {
+          const lang = data.languages.find(l => l.id === itemParam);
+          if (lang) { setSelectedItem({ type: 'language', data: lang }); return; }
+          const med = data.medicines.find(m => m.id === itemParam);
+          if (med) { setSelectedItem({ type: 'medicine', data: med }); return; }
+          const food = data.foods.find(f => f.id === itemParam);
+          if (food) { setSelectedItem({ type: 'food', data: food }); return; }
+        }
+      }
+    } else if (legacyLang) {
+      // Legacy ?lang= support — resolve to province + item
+      const lang = LANGUAGE_GROUPS.find(l => l.id === legacyLang);
       if (lang) {
-        setDrawerItem({ type: 'language', data: lang });
-        return;
+        const pid = resolveProvinceIdFromName(lang.province);
+        if (pid) {
+          setSelectedProvinceId(pid);
+          setSelectedItem({ type: 'language', data: lang });
+          updateUrl(pid, lang.id);
+          return;
+        }
       }
-      const med = MEDICINE_PINS.find(m => m.id === langId);
+      const med = MEDICINE_PINS.find(m => m.id === legacyLang);
       if (med) {
-        setDrawerItem({ type: 'medicine', data: med });
-        setActiveCategories(prev => new Set([...prev, 'medicine']));
-        return;
+        const pid = resolveProvinceIdFromName(med.province);
+        if (pid) {
+          setSelectedProvinceId(pid);
+          setSelectedItem({ type: 'medicine', data: med });
+          updateUrl(pid, med.id);
+          return;
+        }
       }
-      const food = FOOD_PINS.find(f => f.id === langId);
+      const food = FOOD_PINS.find(f => f.id === legacyLang);
       if (food) {
-        setDrawerItem({ type: 'food', data: food });
-        setActiveCategories(prev => new Set([...prev, 'food']));
+        const pid = resolveProvinceIdFromName(food.province);
+        if (pid) {
+          setSelectedProvinceId(pid);
+          setSelectedItem({ type: 'food', data: food });
+          updateUrl(pid, food.id);
+          return;
+        }
       }
     }
   }, [searchParams]);
 
-  const updateUrl = useCallback((id: string | null) => {
-    if (id) {
-      window.history.replaceState(null, '', `?lang=${id}`);
+  const updateUrl = useCallback((provinceId: string | null, itemId?: string | null) => {
+    if (provinceId) {
+      const params = new URLSearchParams();
+      params.set('province', provinceId);
+      if (itemId) params.set('item', itemId);
+      window.history.replaceState(null, '', `?${params.toString()}`);
     } else {
       window.history.replaceState(null, '', window.location.pathname);
     }
   }, []);
 
-  const handleSelectLanguage = useCallback((lang: LanguageGroup) => {
-    setDrawerItem({ type: 'language', data: lang });
-    updateUrl(lang.id);
+  const handleSelectProvince = useCallback((provinceId: string) => {
+    setSelectedProvinceId(provinceId);
+    setSelectedItem(null);
+    updateUrl(provinceId);
   }, [updateUrl]);
 
-  const handleSelectMedicine = useCallback((pin: MedicinePin) => {
-    setDrawerItem({ type: 'medicine', data: pin });
-    updateUrl(pin.id);
-  }, [updateUrl]);
+  const handleSelectItem = useCallback((item: DrawerItem) => {
+    setSelectedItem(item);
+    if (selectedProvinceId) {
+      updateUrl(selectedProvinceId, item.data.id);
+    }
+  }, [selectedProvinceId, updateUrl]);
 
-  const handleSelectFood = useCallback((pin: FoodPin) => {
-    setDrawerItem({ type: 'food', data: pin });
-    updateUrl(pin.id);
-  }, [updateUrl]);
+  const handleBackToProvince = useCallback(() => {
+    setSelectedItem(null);
+    if (selectedProvinceId) {
+      updateUrl(selectedProvinceId);
+    }
+  }, [selectedProvinceId, updateUrl]);
 
-  const handleCloseDrawer = useCallback(() => {
-    setDrawerItem(null);
+  const handleClosePanel = useCallback(() => {
+    setSelectedProvinceId(null);
+    setSelectedItem(null);
     updateUrl(null);
   }, [updateUrl]);
 
-  const handleToggleCategory = useCallback((cat: PinCategory) => {
-    setActiveCategories(prev => {
-      const next = new Set(prev);
-      if (next.has(cat)) {
-        // Don't allow deselecting all
-        if (next.size > 1) next.delete(cat);
-      } else {
-        next.add(cat);
-      }
-      return next;
-    });
-  }, []);
+  // Search handlers
+  const handleSearchProvince = useCallback((provinceId: string) => {
+    handleSelectProvince(provinceId);
+  }, [handleSelectProvince]);
 
-  // For the search bar — only search languages (primary use case)
-  const handleSearchSelect = useCallback((lang: LanguageGroup) => {
-    if (!activeCategories.has('language')) {
-      setActiveCategories(prev => new Set([...prev, 'language']));
-    }
-    handleSelectLanguage(lang);
-  }, [activeCategories, handleSelectLanguage]);
+  const handleSearchItem = useCallback((provinceId: string, item: DrawerItem) => {
+    setSelectedProvinceId(provinceId);
+    setSelectedItem(item);
+    updateUrl(provinceId, item.data.id);
+  }, [updateUrl]);
 
-  const selectedId = drawerItem?.data.id || null;
+  // Get the language data for lead form
+  const leadFormLanguage = selectedItem?.type === 'language' ? selectedItem.data : null;
 
-  // Get the language data for lead form (if current item is a language)
-  const leadFormLanguage = drawerItem?.type === 'language' ? drawerItem.data : null;
+  // Total items across all provinces
+  const totalItems = Object.values(PROVINCE_INDEX).reduce((sum, d) => sum + d.totalItems, 0);
+  const provincesWithData = Object.keys(PROVINCE_INDEX).length;
 
   return (
     <div className="relative h-screen w-screen bg-surface-50 overflow-hidden">
-      {/* Full-screen map */}
-      <MapComponent
-        selectedId={selectedId}
-        onSelectLanguage={handleSelectLanguage}
-        onSelectMedicine={handleSelectMedicine}
-        onSelectFood={handleSelectFood}
-        activeCategories={activeCategories}
-      />
+      {/* Map — adjusts width on desktop when panel is open */}
+      <div className={`h-full transition-all duration-300 ease-out ${selectedProvinceId ? 'sm:mr-[420px]' : ''}`}>
+        <ProvinceMap
+          selectedProvinceId={selectedProvinceId}
+          onSelectProvince={handleSelectProvince}
+        />
+      </div>
 
       {/* Floating search bar */}
-      <SearchBar onSelectLanguage={handleSearchSelect} />
+      <UnifiedSearch
+        onSelectProvince={handleSearchProvince}
+        onSelectItem={handleSearchItem}
+      />
 
       {/* CORA badge */}
       <div className="absolute top-4 left-4 z-30 hidden sm:block">
@@ -136,32 +183,40 @@ function MapPageInner() {
         </a>
       </div>
 
-      {/* Pin count */}
-      <div className="absolute bottom-20 left-3 z-30">
+      {/* Stats badge */}
+      <div className="absolute bottom-6 left-3 z-30">
         <div className="bg-white/85 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-float flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 bg-brand-500 rounded-full animate-pulse" />
           <span className="text-surface-500 text-[11px]">
-            <span className="font-semibold text-surface-700">
-              {(activeCategories.has('language') ? LANGUAGE_GROUPS.length : 0) +
-               (activeCategories.has('medicine') ? MEDICINE_PINS.length : 0) +
-               (activeCategories.has('food') ? FOOD_PINS.length : 0)}
-            </span> pins on map
+            <span className="font-semibold text-surface-700">{totalItems}</span> items &middot; <span className="font-semibold text-surface-700">{provincesWithData}</span> provinces
           </span>
         </div>
       </div>
 
-      {/* Category toggles + Contribute button */}
-      <CategoryToggles
-        active={activeCategories}
-        onToggle={handleToggleCategory}
-        onContribute={() => setShowContribute(true)}
-      />
+      {/* Contribute FAB (when no panel open) */}
+      {!selectedProvinceId && (
+        <div className="absolute bottom-6 right-3 z-30">
+          <button
+            onClick={() => setShowContribute(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white rounded-2xl text-xs font-semibold shadow-float-lg transition-colors"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Contribute
+          </button>
+        </div>
+      )}
 
-      {/* Bottom drawer */}
-      <BottomDrawer
-        item={drawerItem}
-        onClose={handleCloseDrawer}
+      {/* Province panel */}
+      <ProvincePanel
+        provinceId={selectedProvinceId}
+        selectedItem={selectedItem}
+        onClose={handleClosePanel}
+        onSelectItem={handleSelectItem}
+        onBackToProvince={handleBackToProvince}
         onOpenLeadForm={() => setShowLeadForm(true)}
+        onContribute={() => setShowContribute(true)}
       />
 
       {/* Lead capture modal */}

@@ -61,14 +61,44 @@ body {
   color: #64748b !important;
 }
 
-/* ── Bottom Drawer ── */
-.drawer-backdrop {
-  transition: opacity 0.3s ease;
+/* ── Province Panel ── */
+.panel-slide {
+  animation: panelSlideUp 0.35s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-.drawer-sheet {
-  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
-  will-change: transform;
+@media (min-width: 640px) {
+  .panel-slide {
+    animation: panelSlideLeft 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+}
+
+@keyframes panelSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes panelSlideLeft {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* ── Province Tooltip ── */
+.province-tooltip {
+  background: white !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+  padding: 8px 12px !important;
+  font-family: inherit !important;
+}
+
+.province-tooltip::before {
+  border-top-color: white !important;
+}
+
+/* ── GeoJSON hover ── */
+.leaflet-interactive {
+  transition: fill-opacity 0.15s ease, stroke-width 0.15s ease;
 }
 
 /* ── Modal ── */
