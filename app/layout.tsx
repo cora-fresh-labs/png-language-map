@@ -1,24 +1,33 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#0d2818',
+}
+
 export const metadata: Metadata = {
   title: 'Papua New Guinea — Languages & Communities | CORA',
-  description: 'Interactive map of Papua New Guinea showing language groups, tribal regions, and farming communities. Explore 800+ languages across PNG\'s 22 provinces.',
-  keywords: ['Papua New Guinea', 'PNG languages', 'tribal map', 'farming communities', 'CORA', 'carbon credits'],
+  description: 'Interactive map of Papua New Guinea showing 800+ language groups, tribal regions, crops, and farming communities across 22 provinces. Explore PNG\'s incredible linguistic diversity.',
+  keywords: ['Papua New Guinea', 'PNG languages', 'tribal map', 'farming communities', 'CORA', 'biochar', 'carbon credits', 'Melanesia', 'language map'],
   openGraph: {
-    title: 'Papua New Guinea — Languages & Communities',
-    description: 'Explore PNG\'s incredible linguistic diversity — 800+ languages across 22 provinces. Click any region to discover local crops, culture, and communities.',
+    title: 'Papua New Guinea — 800+ Languages Mapped',
+    description: 'Explore PNG\'s incredible linguistic diversity. Click any region to discover local languages, crops, culture, and CORA biochar programs.',
     type: 'website',
-    images: ['/og-image.png'],
+    siteName: 'PNG Language Map | CORA',
+    locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Papua New Guinea — Languages & Communities',
-    description: 'Interactive map of PNG language groups and farming communities',
-  }
+    title: 'Papua New Guinea — 800+ Languages Mapped',
+    description: 'Interactive map of PNG language groups, crops, and farming communities. Powered by CORA.',
+  },
+  robots: 'index, follow',
 }
 
 export default function RootLayout({

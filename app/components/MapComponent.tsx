@@ -2,24 +2,29 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { LANGUAGE_GROUPS, LanguageGroup } from '../data/languages';
+import { CROP_ZONES, CROP_COLORS } from '../data/cropZones';
 
 interface MapComponentProps {
   selectedLanguage: LanguageGroup | null;
   onSelectLanguage: (lang: LanguageGroup | null) => void;
   filteredLanguages: LanguageGroup[];
+  showCropZones: boolean;
 }
 
 const FAMILY_COLORS: Record<string, string> = {
-  'Austronesian': '#06b6d4',      // cyan
-  'Trans-New Guinea': '#f59e0b',  // amber
-  'Papuan': '#a78bfa',            // violet
-  'Creole': '#fb923c',            // orange
+  'Austronesian': '#06b6d4',
+  'Trans-New Guinea': '#f59e0b',
+  'Papuan': '#a78bfa',
+  'Creole': '#ffffff',
 };
 
-export default function MapComponent({ selectedLanguage, onSelectLanguage, filteredLanguages }: MapComponentProps) {
+const MAX_SPEAKERS = Math.max(...LANGUAGE_GROUPS.map(l => l.speakers));
+
+export default function MapComponent({ selectedLanguage, onSelectLanguage, filteredLanguages, showCropZones }: MapComponentProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const cropLayersRef = useRef<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -28,7 +33,6 @@ export default function MapComponent({ selectedLanguage, onSelectLanguage, filte
     const initMap = async () => {
       const L = (await import('leaflet')).default;
 
-      // Fix default icon
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
@@ -37,33 +41,30 @@ export default function MapComponent({ selectedLanguage, onSelectLanguage, filte
       });
 
       const map = L.map(mapRef.current!, {
-        center: [-6.315, 143.955],
+        center: [-6.0, 147.0],
         zoom: 6,
         zoomControl: false,
         attributionControl: true,
-        minZoom: 4,
+        minZoom: 5,
         maxZoom: 12,
       });
 
-      // Add zoom control to top-right
       L.control.zoom({ position: 'topright' }).addTo(map);
 
-      // Dark tile layer
+      // Dark CartoDB base
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd',
-        maxZoom: 20
+        maxZoom: 20,
       }).addTo(map);
 
-      // Alternatively try a terrain layer
+      // Subtle terrain overlay for topographic context
       L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri',
-        opacity: 0.15,
+        opacity: 0.12,
       }).addTo(map);
 
       leafletMapRef.current = map;
-
-      // Add markers
       addMarkers(L, map, LANGUAGE_GROUPS, onSelectLanguage);
       setIsLoaded(true);
     };
@@ -78,7 +79,7 @@ export default function MapComponent({ selectedLanguage, onSelectLanguage, filte
     };
   }, []);
 
-  // Update marker visibility based on filters
+  // Update markers on filter change
   useEffect(() => {
     if (!leafletMapRef.current || !isLoaded) return;
 
@@ -86,72 +87,157 @@ export default function MapComponent({ selectedLanguage, onSelectLanguage, filte
       const L = (await import('leaflet')).default;
       const map = leafletMapRef.current;
 
-      // Clear existing markers
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
 
       const filteredIds = new Set(filteredLanguages.map(l => l.id));
       const visibleLanguages = LANGUAGE_GROUPS.filter(l => filteredIds.has(l.id));
-
       addMarkers(L, map, visibleLanguages, onSelectLanguage);
     };
 
     updateMarkers();
   }, [filteredLanguages, isLoaded]);
 
-  function addMarkers(L: any, map: any, languages: LanguageGroup[], onSelect: (lang: LanguageGroup | null) => void) {
-    languages.forEach(lang => {
-      const color = FAMILY_COLORS[lang.family] || '#4ade80';
-      const radius = Math.max(20000, Math.min(lang.speakers * 0.35, 120000));
+  // Crop zone overlay toggle
+  useEffect(() => {
+    if (!leafletMapRef.current || !isLoaded) return;
 
-      // Create circle marker
+    const updateCropZones = async () => {
+      const L = (await import('leaflet')).default;
+      const map = leafletMapRef.current;
+
+      // Remove existing crop layers
+      cropLayersRef.current.forEach(l => l.remove());
+      cropLayersRef.current = [];
+
+      if (showCropZones) {
+        CROP_ZONES.forEach(zone => {
+          const circle = L.circle([zone.lat, zone.lng], {
+            radius: zone.radius,
+            fillColor: zone.fillColor,
+            fillOpacity: 0.18,
+            color: zone.color,
+            weight: 1,
+            opacity: 0.35,
+            dashArray: '6 4',
+            interactive: false,
+          });
+          circle.addTo(map);
+          cropLayersRef.current.push(circle);
+
+          // Zone label
+          const label = L.divIcon({
+            html: `<div style="
+              color: ${zone.color};
+              font-size: 9px;
+              font-weight: 600;
+              text-shadow: 0 1px 4px rgba(0,0,0,0.95);
+              white-space: nowrap;
+              pointer-events: none;
+              text-align: center;
+              opacity: 0.7;
+              letter-spacing: 0.05em;
+              text-transform: uppercase;
+            ">${zone.crop}</div>`,
+            className: '',
+            iconAnchor: [15, 0],
+          });
+          const labelMarker = L.marker([zone.lat + 0.15, zone.lng], { icon: label, interactive: false });
+          labelMarker.addTo(map);
+          cropLayersRef.current.push(labelMarker);
+        });
+      }
+    };
+
+    updateCropZones();
+  }, [showCropZones, isLoaded]);
+
+  function addMarkers(L: any, map: any, languages: LanguageGroup[], onSelect: (lang: LanguageGroup | null) => void) {
+    // Sort so smaller circles render on top of larger ones
+    const sorted = [...languages].sort((a, b) => b.speakers - a.speakers);
+
+    sorted.forEach(lang => {
+      const color = FAMILY_COLORS[lang.family] || '#4ade80';
+      // Proportional radius: sqrt-scaled for area perception
+      const minR = 12000;
+      const maxR = 85000;
+      const ratio = Math.sqrt(lang.speakers / MAX_SPEAKERS);
+      const radius = minR + ratio * (maxR - minR);
+
+      // CORA outer pulse ring
+      if (lang.cora) {
+        // Dashed outer ring
+        const outerRing = L.circle([lang.lat, lang.lng], {
+          radius: radius * 1.8,
+          fillColor: '#4ade80',
+          fillOpacity: 0.06,
+          color: '#4ade80',
+          weight: 2,
+          opacity: 0.4,
+          dashArray: '8 6',
+          interactive: false,
+        });
+        outerRing.addTo(map);
+        markersRef.current.push(outerRing);
+
+        // Inner glow ring
+        const glowRing = L.circle([lang.lat, lang.lng], {
+          radius: radius * 1.35,
+          fillColor: '#4ade80',
+          fillOpacity: 0.1,
+          color: '#4ade80',
+          weight: 1.5,
+          opacity: 0.6,
+          interactive: false,
+        });
+        glowRing.addTo(map);
+        markersRef.current.push(glowRing);
+      }
+
+      // Main circle
       const circle = L.circle([lang.lat, lang.lng], {
         radius,
         fillColor: color,
-        fillOpacity: lang.cora ? 0.75 : 0.45,
+        fillOpacity: lang.cora ? 0.55 : 0.35,
         color: lang.cora ? '#4ade80' : color,
-        weight: lang.cora ? 3 : 1.5,
-        opacity: 0.9,
+        weight: lang.cora ? 2.5 : 1.5,
+        opacity: 0.8,
       });
 
-      // CORA pulse effect
-      if (lang.cora) {
-        const pulseCircle = L.circle([lang.lat, lang.lng], {
-          radius: radius * 1.4,
-          fillColor: '#4ade80',
-          fillOpacity: 0.12,
-          color: '#4ade80',
-          weight: 2,
-          opacity: 0.5,
-          dashArray: '4 8',
-        });
-        pulseCircle.addTo(map);
-        markersRef.current.push(pulseCircle);
-      }
-
       // Label
+      const fontSize = lang.speakers > 100000 ? '11px' : lang.speakers > 30000 ? '10px' : '9px';
+      const labelHtml = lang.cora
+        ? `<div style="display:flex;align-items:center;gap:3px;justify-content:center;">
+             <span style="font-size:12px;">🍃</span>
+             <span>${lang.name}</span>
+           </div>`
+        : `<span>${lang.name}</span>`;
+
       const label = L.divIcon({
         html: `<div style="
           color: white;
-          font-size: ${lang.speakers > 100000 ? '11px' : '9px'};
+          font-size: ${fontSize};
           font-weight: 600;
-          text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.8);
+          text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.8);
           white-space: nowrap;
           pointer-events: none;
           text-align: center;
-        ">${lang.name}${lang.cora ? ' 🌱' : ''}</div>`,
+        ">${labelHtml}</div>`,
         className: '',
-        iconAnchor: [0, 0],
+        iconAnchor: [0, -4],
       });
 
       const labelMarker = L.marker([lang.lat, lang.lng], { icon: label, interactive: false });
 
       circle.on('click', () => onSelect(lang));
       circle.on('mouseover', () => {
-        circle.setStyle({ fillOpacity: 0.85, weight: 3 });
+        circle.setStyle({ fillOpacity: 0.7, weight: 3 });
       });
       circle.on('mouseout', () => {
-        circle.setStyle({ fillOpacity: lang.cora ? 0.75 : 0.45, weight: lang.cora ? 3 : 1.5 });
+        circle.setStyle({
+          fillOpacity: lang.cora ? 0.55 : 0.35,
+          weight: lang.cora ? 2.5 : 1.5,
+        });
       });
 
       circle.addTo(map);
@@ -165,7 +251,7 @@ export default function MapComponent({ selectedLanguage, onSelectLanguage, filte
     if (selectedLanguage && leafletMapRef.current) {
       leafletMapRef.current.flyTo(
         [selectedLanguage.lat, selectedLanguage.lng],
-        7,
+        8,
         { duration: 0.8 }
       );
     }

@@ -8,8 +8,8 @@ import SearchFilters from './components/SearchFilters';
 import SidePanel from './components/SidePanel';
 import Legend from './components/Legend';
 import CTABanner from './components/CTABanner';
+import StatsPanel from './components/StatsPanel';
 
-// Dynamic import to avoid SSR issues with Leaflet
 const MapComponent = dynamic(() => import('./components/MapComponent'), {
   ssr: false,
   loading: () => (
@@ -25,6 +25,7 @@ const MapComponent = dynamic(() => import('./components/MapComponent'), {
 function MapPageInner() {
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageGroup | null>(null);
   const [filteredLanguages, setFilteredLanguages] = useState<LanguageGroup[]>(LANGUAGE_GROUPS);
+  const [showCropZones, setShowCropZones] = useState(false);
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -38,18 +39,18 @@ function MapPageInner() {
   return (
     <div className="flex flex-col h-screen w-screen bg-cora-dark overflow-hidden">
       {/* Header */}
-      <header className="flex-shrink-0 bg-cora-dark border-b border-forest-800 px-4 py-3 z-40">
-        <div className="flex items-center justify-between max-w-6xl mx-auto">
+      <header className="flex-shrink-0 bg-cora-dark border-b border-forest-800/60 px-4 py-2.5 z-40">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-sm font-bold text-white shadow-lg">
+            <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-green-900/30">
               C
             </div>
             <div>
-              <h1 className="text-white font-bold text-sm sm:text-base leading-tight">
-                Papua New Guinea — Languages &amp; Communities
+              <h1 className="text-white font-bold text-sm leading-tight">
+                Papua New Guinea — Languages & Communities
               </h1>
-              <p className="text-forest-500 text-xs hidden sm:block">
-                {LANGUAGE_GROUPS.length} language groups · 800+ total languages · 22 provinces
+              <p className="text-forest-600 text-[10px] hidden sm:block">
+                {LANGUAGE_GROUPS.length} language groups mapped · 800+ total languages · 22 provinces
               </p>
             </div>
           </div>
@@ -57,10 +58,10 @@ function MapPageInner() {
             href="https://coraprojects.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:flex items-center gap-2 text-forest-400 hover:text-forest-200 text-xs transition-colors"
+            className="hidden sm:flex items-center gap-1.5 text-forest-500 hover:text-forest-300 text-[10px] transition-colors"
           >
             <span>Powered by CORA</span>
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
           </a>
@@ -71,6 +72,7 @@ function MapPageInner() {
       <SearchFilters
         onFilter={setFilteredLanguages}
         onSelectLanguage={(lang) => setSelectedLanguage(lang)}
+        filteredCount={filteredLanguages.length}
       />
 
       {/* Map area */}
@@ -79,17 +81,28 @@ function MapPageInner() {
           selectedLanguage={selectedLanguage}
           onSelectLanguage={setSelectedLanguage}
           filteredLanguages={filteredLanguages}
+          showCropZones={showCropZones}
         />
 
         {/* Legend */}
-        <Legend />
+        <Legend showCropZones={showCropZones} />
 
-        {/* Stats overlay */}
-        <div className="absolute top-4 left-4 z-30 bg-cora-dark/80 backdrop-blur-sm border border-forest-800 rounded-xl px-3 py-2">
-          <p className="text-forest-400 text-xs">
-            Showing <span className="text-white font-semibold">{filteredLanguages.length}</span> languages
-          </p>
-          <p className="text-forest-600 text-xs mt-0.5">Click a region to explore</p>
+        {/* Stats Panel */}
+        <StatsPanel />
+
+        {/* Crop Zone Toggle */}
+        <div className="absolute top-3 right-14 z-30">
+          <button
+            onClick={() => setShowCropZones(!showCropZones)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all backdrop-blur-sm ${
+              showCropZones
+                ? 'bg-amber-900/60 border border-amber-600/60 text-amber-200 shadow-sm'
+                : 'bg-cora-dark/80 border border-forest-700 text-forest-400 hover:border-forest-500 hover:text-forest-300'
+            }`}
+          >
+            <span className="text-sm leading-none">🌾</span>
+            <span className="hidden sm:inline">Crop Zones</span>
+          </button>
         </div>
 
         {/* Side Panel */}
@@ -103,16 +116,16 @@ function MapPageInner() {
       </div>
 
       {/* Footer */}
-      <footer className="flex-shrink-0 bg-cora-dark border-t border-forest-900 px-4 py-2">
-        <div className="flex items-center justify-between max-w-6xl mx-auto">
-          <p className="text-forest-700 text-xs">
-            Data sourced from SIL Ethnologue, UN HDX, and community knowledge
+      <footer className="flex-shrink-0 bg-cora-dark border-t border-forest-900/60 px-4 py-1.5">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <p className="text-forest-700 text-[10px]">
+            Data: SIL Ethnologue, UN HDX & community knowledge
           </p>
           <a
             href="https://coraprojects.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-forest-600 hover:text-forest-400 text-xs transition-colors"
+            className="text-forest-700 hover:text-forest-500 text-[10px] transition-colors"
           >
             coraprojects.com
           </a>
