@@ -2,11 +2,16 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { LANGUAGE_GROUPS, LanguageGroup } from '../data/languages';
+import { MEDICINE_PINS } from '../data/medicines';
+import { FOOD_PINS } from '../data/foods';
+import { PinCategory, MapPin, MedicinePin, FoodPin } from '../data/pins';
 
 interface MapComponentProps {
-  selectedLanguage: LanguageGroup | null;
-  onSelectLanguage: (lang: LanguageGroup | null) => void;
-  filteredLanguages: LanguageGroup[];
+  selectedId: string | null;
+  onSelectLanguage: (lang: LanguageGroup) => void;
+  onSelectMedicine: (pin: MedicinePin) => void;
+  onSelectFood: (pin: FoodPin) => void;
+  activeCategories: Set<PinCategory>;
 }
 
 const FAMILY_COLORS: Record<string, string> = {
@@ -18,22 +23,31 @@ const FAMILY_COLORS: Record<string, string> = {
 
 const MAX_SPEAKERS = Math.max(...LANGUAGE_GROUPS.map(l => l.speakers));
 
-export default function MapComponent({ selectedLanguage, onSelectLanguage, filteredLanguages }: MapComponentProps) {
+export default function MapComponent({
+  selectedId,
+  onSelectLanguage,
+  onSelectMedicine,
+  onSelectFood,
+  activeCategories,
+}: MapComponentProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const selectedRingRef = useRef<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Store the latest callback in a ref so markers always have the current version
-  const onSelectRef = useRef(onSelectLanguage);
-  onSelectRef.current = onSelectLanguage;
+  // Store latest callbacks in refs
+  const onSelectLangRef = useRef(onSelectLanguage);
+  onSelectLangRef.current = onSelectLanguage;
+  const onSelectMedRef = useRef(onSelectMedicine);
+  onSelectMedRef.current = onSelectMedicine;
+  const onSelectFoodRef = useRef(onSelectFood);
+  onSelectFoodRef.current = onSelectFood;
 
   const initMap = useCallback(async () => {
     if (!mapRef.current || leafletMapRef.current) return;
 
     const L = (await import('leaflet')).default;
-
     delete (L.Icon.Default.prototype as any)._getIconUrl;
 
     const map = L.map(mapRef.current, {
@@ -45,10 +59,8 @@ export default function MapComponent({ selectedLanguage, onSelectLanguage, filte
       maxZoom: 12,
     });
 
-    // Zoom control top-right
     L.control.zoom({ position: 'topright' }).addTo(map);
 
-    // Light CartoDB Voyager tiles (clean, Apple Maps-like)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
       subdomains: 'abcd',
@@ -56,7 +68,6 @@ export default function MapComponent({ selectedLanguage, onSelectLanguage, filte
     }).addTo(map);
 
     leafletMapRef.current = map;
-    addMarkers(L, map, LANGUAGE_GROUPS);
     setIsLoaded(true);
   }, []);
 
@@ -70,45 +81,50 @@ export default function MapComponent({ selectedLanguage, onSelectLanguage, filte
     };
   }, [initMap]);
 
-  // Update markers on filter change
+  // Render pins whenever categories change
   useEffect(() => {
     if (!leafletMapRef.current || !isLoaded) return;
 
-    const update = async () => {
+    const renderPins = async () => {
       const L = (await import('leaflet')).default;
       const map = leafletMapRef.current;
 
+      // Clear existing
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
 
-      const filteredIds = new Set(filteredLanguages.map(l => l.id));
-      const visible = LANGUAGE_GROUPS.filter(l => filteredIds.has(l.id));
-      addMarkers(L, map, visible);
-    };
-    update();
-  }, [filteredLanguages, isLoaded]);
+      // Languages
+      if (activeCategories.has('language')) {
+        addLanguageMarkers(L, map);
+      }
 
-  function addMarkers(L: any, map: any, languages: LanguageGroup[]) {
-    // Sort: large first so small ones render on top and are clickable
-    const sorted = [...languages].sort((a, b) => b.speakers - a.speakers);
+      // Medicines
+      if (activeCategories.has('medicine')) {
+        addCategoryMarkers(L, map, MEDICINE_PINS, '#059669', '🌿', (pin) => {
+          onSelectMedRef.current(pin as MedicinePin);
+        });
+      }
+
+      // Foods
+      if (activeCategories.has('food')) {
+        addCategoryMarkers(L, map, FOOD_PINS, '#ea580c', '🍲', (pin) => {
+          onSelectFoodRef.current(pin as FoodPin);
+        });
+      }
+    };
+
+    renderPins();
+  }, [activeCategories, isLoaded]);
+
+  function addLanguageMarkers(L: any, map: any) {
+    const sorted = [...LANGUAGE_GROUPS].sort((a, b) => b.speakers - a.speakers);
 
     sorted.forEach(lang => {
       const color = FAMILY_COLORS[lang.family] || '#16a34a';
-
-      // Proportional pixel radius (8-28px range), sqrt-scaled for area perception
       const ratio = Math.sqrt(lang.speakers / MAX_SPEAKERS);
       const pxRadius = 7 + ratio * 21;
 
-      const marker = L.circleMarker([lang.lat, lang.lng], {
-        radius: pxRadius,
-        fillColor: color,
-        fillOpacity: 0.5,
-        color: '#ffffff',
-        weight: 2,
-        opacity: 1,
-      });
-
-      // CORA: green ring indicator
+      // CORA ring
       if (lang.cora) {
         const coraRing = L.circleMarker([lang.lat, lang.lng], {
           radius: pxRadius + 5,
@@ -124,36 +140,27 @@ export default function MapComponent({ selectedLanguage, onSelectLanguage, filte
         markersRef.current.push(coraRing);
       }
 
-      // Text label
+      const marker = L.circleMarker([lang.lat, lang.lng], {
+        radius: pxRadius,
+        fillColor: color,
+        fillOpacity: 0.5,
+        color: '#ffffff',
+        weight: 2,
+        opacity: 1,
+      });
+
+      // Label
       const fontSize = lang.speakers > 100000 ? 12 : lang.speakers > 30000 ? 11 : 10;
       const label = L.divIcon({
-        html: `<div style="
-          color: #1e293b;
-          font-size: ${fontSize}px;
-          font-weight: 600;
-          white-space: nowrap;
-          pointer-events: none;
-          text-align: center;
-          text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 8px #fff;
-          line-height: 1;
-        ">${lang.name}</div>`,
+        html: `<div style="color:#1e293b;font-size:${fontSize}px;font-weight:600;white-space:nowrap;pointer-events:none;text-align:center;text-shadow:0 0 4px #fff,0 0 4px #fff,0 0 8px #fff;line-height:1;">${lang.name}</div>`,
         className: '',
         iconAnchor: [0, -(pxRadius + 6)],
       });
       const labelMarker = L.marker([lang.lat, lang.lng], { icon: label, interactive: false });
 
-      // Interactions
-      marker.on('click', () => {
-        onSelectRef.current(lang);
-      });
-
-      marker.on('mouseover', () => {
-        marker.setStyle({ fillOpacity: 0.8, weight: 3, color: color });
-      });
-
-      marker.on('mouseout', () => {
-        marker.setStyle({ fillOpacity: 0.5, weight: 2, color: '#ffffff' });
-      });
+      marker.on('click', () => onSelectLangRef.current(lang));
+      marker.on('mouseover', () => marker.setStyle({ fillOpacity: 0.8, weight: 3, color }));
+      marker.on('mouseout', () => marker.setStyle({ fillOpacity: 0.5, weight: 2, color: '#ffffff' }));
 
       marker.addTo(map);
       labelMarker.addTo(map);
@@ -161,45 +168,58 @@ export default function MapComponent({ selectedLanguage, onSelectLanguage, filte
     });
   }
 
-  // Fly to selected language + highlight ring
+  function addCategoryMarkers(L: any, map: any, pins: MapPin[], color: string, emoji: string, onClick: (pin: MapPin) => void) {
+    pins.forEach(pin => {
+      // Custom icon marker using HTML div
+      const icon = L.divIcon({
+        html: `<div style="
+          width: 36px; height: 36px;
+          background: ${color};
+          border: 2.5px solid white;
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 16px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+          cursor: pointer;
+          transition: transform 0.15s ease;
+        ">${pin.speciesIcon || emoji}</div>`,
+        className: '',
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+      });
+
+      const marker = L.marker([pin.lat, pin.lng], { icon });
+
+      // Label
+      const label = L.divIcon({
+        html: `<div style="color:#1e293b;font-size:10px;font-weight:600;white-space:nowrap;pointer-events:none;text-align:center;text-shadow:0 0 4px #fff,0 0 4px #fff,0 0 8px #fff;line-height:1;">${pin.name}</div>`,
+        className: '',
+        iconAnchor: [0, -24],
+      });
+      const labelMarker = L.marker([pin.lat, pin.lng], { icon: label, interactive: false });
+
+      marker.on('click', () => onClick(pin));
+
+      marker.addTo(map);
+      labelMarker.addTo(map);
+      markersRef.current.push(marker, labelMarker);
+    });
+  }
+
+  // Fly to selected pin
   useEffect(() => {
-    if (!leafletMapRef.current || !isLoaded) return;
+    if (!leafletMapRef.current || !isLoaded || !selectedId) return;
 
-    const update = async () => {
-      const L = (await import('leaflet')).default;
-      const map = leafletMapRef.current;
+    // Find the selected item across all datasets
+    const lang = LANGUAGE_GROUPS.find(l => l.id === selectedId);
+    const med = MEDICINE_PINS.find(m => m.id === selectedId);
+    const food = FOOD_PINS.find(f => f.id === selectedId);
+    const item = lang || med || food;
 
-      // Remove previous selection ring
-      if (selectedRingRef.current) {
-        selectedRingRef.current.remove();
-        selectedRingRef.current = null;
-      }
-
-      if (selectedLanguage) {
-        map.flyTo(
-          [selectedLanguage.lat, selectedLanguage.lng],
-          8,
-          { duration: 0.6 }
-        );
-
-        // Selection highlight ring
-        const ratio = Math.sqrt(selectedLanguage.speakers / MAX_SPEAKERS);
-        const pxRadius = 7 + ratio * 21;
-        const ring = L.circleMarker([selectedLanguage.lat, selectedLanguage.lng], {
-          radius: pxRadius + 4,
-          fillColor: '#16a34a',
-          fillOpacity: 0.15,
-          color: '#16a34a',
-          weight: 3,
-          opacity: 0.9,
-          interactive: false,
-        });
-        ring.addTo(map);
-        selectedRingRef.current = ring;
-      }
-    };
-    update();
-  }, [selectedLanguage, isLoaded]);
+    if (item) {
+      leafletMapRef.current.flyTo([item.lat, item.lng], 8, { duration: 0.6 });
+    }
+  }, [selectedId, isLoaded]);
 
   return (
     <div className="relative w-full h-full">
@@ -207,7 +227,7 @@ export default function MapComponent({ selectedLanguage, onSelectLanguage, filte
       {!isLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-surface-50">
           <div className="text-center">
-            <div className="w-10 h-10 border-3 border-surface-200 border-t-brand-500 rounded-full animate-spin mx-auto mb-3" />
+            <div className="w-10 h-10 border-[3px] border-surface-200 border-t-brand-500 rounded-full animate-spin mx-auto mb-3" />
             <p className="text-surface-400 text-sm">Loading map...</p>
           </div>
         </div>
