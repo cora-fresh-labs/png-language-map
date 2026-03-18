@@ -8,24 +8,25 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#0d2818',
+  userScalable: false,
+  themeColor: '#ffffff',
 }
 
 export const metadata: Metadata = {
-  title: 'Papua New Guinea — Languages & Communities | CORA',
-  description: 'Interactive map of Papua New Guinea showing 800+ language groups, tribal regions, crops, and farming communities across 22 provinces. Explore PNG\'s incredible linguistic diversity.',
-  keywords: ['Papua New Guinea', 'PNG languages', 'tribal map', 'farming communities', 'CORA', 'biochar', 'carbon credits', 'Melanesia', 'language map'],
+  title: 'Discover PNG Languages | CORA',
+  description: 'Explore Papua New Guinea\u2019s 800+ languages. Tap any region to discover speakers, culture, oral histories, and connect with your community through CORA.',
+  keywords: ['Papua New Guinea', 'PNG languages', 'Tok Pisin', 'Melanesia', 'CORA', 'oral history', 'Tumbuna stories', 'PNG communities'],
   openGraph: {
-    title: 'Papua New Guinea — 800+ Languages Mapped',
-    description: 'Explore PNG\'s incredible linguistic diversity. Click any region to discover local languages, crops, culture, and CORA biochar programs.',
+    title: 'Discover Your Language \u2014 Papua New Guinea',
+    description: 'Find your language, share your Tumbuna story, and connect with CORA\u2019s community programs across PNG.',
     type: 'website',
     siteName: 'PNG Language Map | CORA',
     locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Papua New Guinea — 800+ Languages Mapped',
-    description: 'Interactive map of PNG language groups, crops, and farming communities. Powered by CORA.',
+    title: 'Discover Your Language \u2014 Papua New Guinea',
+    description: 'Explore 800+ PNG languages. Tap a region to learn about culture, crops, and oral histories.',
   },
   robots: 'index, follow',
 }

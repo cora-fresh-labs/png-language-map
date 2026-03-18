@@ -7,11 +7,14 @@ export interface LanguageGroup {
   province: string;
   lat: number;
   lng: number;
-  radius: number; // in km, proportional to speakers
+  radius: number;
   crops: string[];
   cora: boolean;
   culturalFact: string;
   color?: string;
+  dialects?: string[];
+  storyTitle?: string;
+  storyExcerpt?: string;
 }
 
 export const LANGUAGE_GROUPS: LanguageGroup[] = [
@@ -27,7 +30,10 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 80,
     crops: ['coconut', 'coffee', 'cocoa'],
     cora: false,
-    culturalFact: 'Tok Pisin is the most widely spoken language in PNG, serving as a lingua franca across all 22 provinces. It evolved from 19th-century plantation pidgin English.'
+    culturalFact: 'Tok Pisin is the most widely spoken language in PNG, serving as a lingua franca across all 22 provinces. It evolved from 19th-century plantation pidgin English.',
+    dialects: ['Urban Tok Pisin', 'Rural Tok Pisin', 'Highlands Tok Pisin'],
+    storyTitle: 'How Tok Pisin Connected a Nation',
+    storyExcerpt: 'In a land of 800 languages, one tongue became the bridge between mountains and sea, uniting traders, missionaries, and communities across the islands...',
   },
   {
     id: 'huli',
@@ -41,7 +47,10 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 45,
     crops: ['sweet potato', 'coffee', 'pigs'],
     cora: false,
-    culturalFact: 'Huli wigmen are famous for their elaborate human-hair wigs decorated with flowers and feathers. Young men spend years growing and shaping their wigs as a mark of manhood.'
+    culturalFact: 'Huli wigmen are famous for their elaborate human-hair wigs decorated with flowers and feathers. Young men spend years growing and shaping their wigs as a mark of manhood.',
+    dialects: ['Huli proper', 'Duguba', 'Tari'],
+    storyTitle: 'The Wigman\'s Promise',
+    storyExcerpt: 'For three years the young man tended his hair in the wig school, learning the songs and secrets that would make him worthy of the great headdress of his ancestors...',
   },
   {
     id: 'enga',
@@ -55,7 +64,10 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 55,
     crops: ['sweet potato', 'coffee'],
     cora: false,
-    culturalFact: 'The Enga people hold the Tee ceremonial exchange cycle — a vast network of pig exchanges that binds communities across the highlands in reciprocal obligation and alliance.'
+    culturalFact: 'The Enga people hold the Tee ceremonial exchange cycle \u2014 a vast network of pig exchanges that binds communities across the highlands in reciprocal obligation and alliance.',
+    dialects: ['Mae Enga', 'Laiapu', 'Kyaka'],
+    storyTitle: 'The Tee Road',
+    storyExcerpt: 'The pigs moved along the Tee road from clan to clan, each exchange a thread in the vast web of obligation that held the highlands people together...',
   },
   {
     id: 'melpa',
@@ -69,7 +81,10 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 42,
     crops: ['coffee', 'sweet potato', 'vegetables'],
     cora: true,
-    culturalFact: 'Melpa-speaking people of Mt. Hagen host the famous Hagen Show — one of the largest cultural festivals in the Pacific, with thousands of performers in full ceremonial dress.'
+    culturalFact: 'Melpa-speaking people of Mt. Hagen host the famous Hagen Show \u2014 one of the largest cultural festivals in the Pacific, with thousands of performers in full ceremonial dress.',
+    dialects: ['Central Melpa', 'North Melpa'],
+    storyTitle: 'The Colours of Mt. Hagen',
+    storyExcerpt: 'When ten thousand painted faces gather in the Hagen valley, the earth shakes with the rhythm of a culture that has celebrated its identity for generations uncounted...',
   },
   {
     id: 'kuman',
@@ -83,7 +98,8 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 35,
     crops: ['coffee', 'sweet potato'],
     cora: false,
-    culturalFact: 'Simbu people are renowned climbers and have played a prominent role in PNG\'s mountaineering history. Their terraced garden systems are visible from the air across steep valley walls.'
+    culturalFact: 'Simbu people are renowned climbers and have played a prominent role in PNG\'s mountaineering history. Their terraced garden systems are visible from the air across steep valley walls.',
+    dialects: ['Kuman', 'Kou', 'Yuri'],
   },
   {
     id: 'yabem',
@@ -97,7 +113,8 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 18,
     crops: ['coconut', 'cocoa', 'betel nut'],
     cora: false,
-    culturalFact: 'Yabem was one of the first PNG languages reduced to writing by Lutheran missionaries in the 1880s, and served as a church lingua franca across Morobe and Madang provinces for over a century.'
+    culturalFact: 'Yabem was one of the first PNG languages reduced to writing by Lutheran missionaries in the 1880s, and served as a church lingua franca across Morobe and Madang provinces for over a century.',
+    dialects: ['Yabem', 'Bukaua'],
   },
   {
     id: 'tolai',
@@ -111,7 +128,10 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 40,
     crops: ['coconut', 'cocoa', 'vanilla'],
     cora: false,
-    culturalFact: 'The Tolai use tambu — coils of tiny cowrie shells — as a traditional currency still exchanged at bride prices, mortuary feasts, and markets. One full coil can buy a pig.'
+    culturalFact: 'The Tolai use tambu \u2014 coils of tiny cowrie shells \u2014 as a traditional currency still exchanged at bride prices, mortuary feasts, and markets. One full coil can buy a pig.',
+    dialects: ['Nodup', 'Livuan', 'Matupit'],
+    storyTitle: 'Rovo and the Coconut',
+    storyExcerpt: 'Long ago, Rovo climbed the tallest coconut palm to steal fire from the sky spirits. When he fell, every place his blood touched the earth, a new coconut tree grew...',
   },
   {
     id: 'motu',
@@ -125,7 +145,10 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 22,
     crops: ['sago', 'fish', 'coconut'],
     cora: false,
-    culturalFact: 'Motu people launched the annual Hiri trade voyage — large lagatoi canoes sailing hundreds of kilometers to trade clay pots for sago with Gulf Province peoples, a tradition maintained for centuries.'
+    culturalFact: 'Motu people launched the annual Hiri trade voyage \u2014 large lagatoi canoes sailing hundreds of kilometers to trade clay pots for sago with Gulf Province peoples.',
+    dialects: ['Motu', 'Koita', 'Koiari'],
+    storyTitle: 'The Hiri Voyage',
+    storyExcerpt: 'When the Laurabada wind came, the lagatoi canoes set sail. The men carried clay pots and the prayers of their families, trading across the sea as their grandfathers did...',
   },
   {
     id: 'kuanua',
@@ -139,7 +162,10 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 30,
     crops: ['coconut', 'cocoa'],
     cora: false,
-    culturalFact: 'East New Britain\'s Tolai/Kuanua people developed some of the most elaborate secret society traditions in Melanesia, including the Dukduk masked figures that enforced social law.'
+    culturalFact: 'East New Britain\'s Tolai/Kuanua people developed some of the most elaborate secret society traditions in Melanesia, including the Dukduk masked figures that enforced social law.',
+    dialects: ['Kuanua', 'Raluana'],
+    storyTitle: 'The Dukduk\'s Judgment',
+    storyExcerpt: 'When the Dukduk emerged from the sea at dawn, draped in leaves and towering above the village, every child knew that justice had arrived to settle the disputes of men...',
   },
   {
     id: 'bena-bena',
@@ -153,7 +179,8 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 28,
     crops: ['coffee', 'sweet potato', 'pyrethrum'],
     cora: false,
-    culturalFact: 'The Eastern Highlands was site of one of history\'s most dramatic first contacts — when prospectors Michael Leahy and Daniel Leahy walked into the Goroka valley in 1930, encountering a million people previously unknown to the outside world.'
+    culturalFact: 'The Eastern Highlands was site of one of history\'s most dramatic first contacts \u2014 when prospectors walked into the Goroka valley in 1930, encountering a million people previously unknown to the outside world.',
+    dialects: ['Bena', 'Yagaria'],
   },
   {
     id: 'wahgi',
@@ -167,7 +194,10 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 38,
     crops: ['coffee', 'tea', 'vegetables'],
     cora: true,
-    culturalFact: 'The Wahgi Valley is the breadbasket of the PNG highlands — fertile volcanic soils produce some of the finest Arabica coffee in the world at elevations above 1,600 meters.'
+    culturalFact: 'The Wahgi Valley is the breadbasket of the PNG highlands \u2014 fertile volcanic soils produce some of the finest Arabica coffee in the world at elevations above 1,600 meters.',
+    dialects: ['North Wahgi', 'South Wahgi', 'Mid-Wahgi'],
+    storyTitle: 'The Valley of Good Soil',
+    storyExcerpt: 'The elders say the valley was a gift from the mountain spirit who wept when she saw her children hungry. Where her tears fell, the richest soil in all the highlands appeared...',
   },
   {
     id: 'orokaiva',
@@ -181,7 +211,10 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 25,
     crops: ['cocoa', 'coconut', 'taro'],
     cora: false,
-    culturalFact: 'The Orokaiva taro initiations involve weeks of ritual where young people are symbolically "killed" and "reborn" as adults — the taro plant itself represents life, death, and renewal.'
+    culturalFact: 'The Orokaiva taro initiations involve weeks of ritual where young people are symbolically "killed" and "reborn" as adults \u2014 the taro plant itself represents life, death, and renewal.',
+    dialects: ['Orokaiva', 'Aeka', 'Hunjara'],
+    storyTitle: 'The Taro Spirit',
+    storyExcerpt: 'The taro must be planted with the right songs, the elders say. Without the words, the tubers stay small and bitter. With them, the garden feeds the whole village...',
   },
   {
     id: 'gogodala',
@@ -195,7 +228,8 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 22,
     crops: ['sago', 'fish', 'coconut'],
     cora: false,
-    culturalFact: 'Gogodala longhouses — called alé — once stretched up to 100 meters long, housing entire clan groups. Intricate geometric designs painted on canoe prows and shields are among PNG\'s finest traditional art forms.'
+    culturalFact: 'Gogodala longhouses \u2014 called al\u00e9 \u2014 once stretched up to 100 meters long, housing entire clan groups. Intricate geometric designs on canoe prows are among PNG\'s finest traditional art.',
+    dialects: ['Gogodala', 'Suki'],
   },
   {
     id: 'kiwai',
@@ -209,7 +243,8 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 22,
     crops: ['sago', 'coconut', 'yam'],
     cora: false,
-    culturalFact: 'Kiwai Island people are master dugout canoe builders. Their elaborate initiation ceremonies once involved the construction of massive communal houses that took entire villages months to complete.'
+    culturalFact: 'Kiwai Island people are master dugout canoe builders. Their elaborate initiation ceremonies once involved the construction of massive communal houses that took entire villages months to complete.',
+    dialects: ['Southern Kiwai', 'Northeast Kiwai'],
   },
   {
     id: 'chimbu',
@@ -223,7 +258,10 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 38,
     crops: ['coffee', 'sweet potato'],
     cora: false,
-    culturalFact: 'Chimbu skull houses hold the bones of ancestors, consulted for guidance before important decisions. Ancestor veneration remains central to Chimbu identity despite over a century of missionary contact.'
+    culturalFact: 'Chimbu skull houses hold the bones of ancestors, consulted for guidance before important decisions. Ancestor veneration remains central to Chimbu identity.',
+    dialects: ['Kuman', 'Sinasina', 'Chuave'],
+    storyTitle: 'The Skull House Keepers',
+    storyExcerpt: 'Before any great decision, the keeper of the skull house sits in silence. The ancestors speak not in words, but in the feeling that rises when the question is true...',
   },
   {
     id: 'sepik',
@@ -237,7 +275,10 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 20,
     crops: ['sago', 'fish', 'yam'],
     cora: false,
-    culturalFact: 'The Sepik River men\'s houses (Haus Tambaran) are among the world\'s most extraordinary architectural achievements — towering facades covered in painted carvings reaching 25 meters high.'
+    culturalFact: 'The Sepik River men\'s houses (Haus Tambaran) are among the world\'s most extraordinary architectural achievements \u2014 towering facades covered in painted carvings reaching 25 meters high.',
+    dialects: ['Iatmul', 'Sawos', 'Chambri'],
+    storyTitle: 'The Crocodile\'s Gift',
+    storyExcerpt: 'The Iatmul say they are the children of the crocodile. The scars on a young man\'s back are not wounds \u2014 they are the marks of the ancestor who carried the first people from the river...',
   },
   {
     id: 'karo',
@@ -251,7 +292,7 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 15,
     crops: ['coffee', 'betel nut', 'taro'],
     cora: false,
-    culturalFact: 'Madang Province is known as the "prettiest town in the Pacific" — its people have maintained strong maritime traditions blending Austronesian and Papuan cultural elements for millennia.'
+    culturalFact: 'Madang Province is known as the "prettiest town in the Pacific" \u2014 its people have maintained strong maritime traditions blending Austronesian and Papuan cultural elements for millennia.',
   },
   {
     id: 'managalas',
@@ -265,7 +306,7 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 18,
     crops: ['cocoa', 'taro', 'yam'],
     cora: false,
-    culturalFact: 'The Managalas plateau is one of PNG\'s most isolated regions, reached only by small aircraft. Communities here have maintained traditional land management practices that have kept forests intact for generations.'
+    culturalFact: 'The Managalas plateau is one of PNG\'s most isolated regions, reached only by small aircraft. Communities here have maintained traditional land management that keeps forests intact for generations.',
   },
   {
     id: 'dobu',
@@ -279,7 +320,10 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 15,
     crops: ['yam', 'sago', 'coconut'],
     cora: false,
-    culturalFact: 'Dobu islanders are renowned participants in the Kula Ring — a vast ceremonial exchange of shell valuables circulating clockwise and counter-clockwise across hundreds of islands in Milne Bay.'
+    culturalFact: 'Dobu islanders are renowned participants in the Kula Ring \u2014 a vast ceremonial exchange of shell valuables circulating clockwise and counter-clockwise across hundreds of islands in Milne Bay.',
+    dialects: ['Dobu', 'Duau'],
+    storyTitle: 'The Kula Shell\'s Journey',
+    storyExcerpt: 'The necklace traveled east and the armband traveled west. Each shell carried the story of every hand that held it, linking islands across the sea in a chain older than memory...',
   },
   {
     id: 'mekeo',
@@ -293,7 +337,8 @@ export const LANGUAGE_GROUPS: LanguageGroup[] = [
     radius: 20,
     crops: ['sago', 'betel nut', 'coconut'],
     cora: false,
-    culturalFact: 'Mekeo chiefs (ugauga) are one of the few hereditary chieftainships in PNG. Their regalia — elaborate headdresses and bark cloth robes — can only be worn during prescribed ceremonies.'
+    culturalFact: 'Mekeo chiefs (ugauga) are one of the few hereditary chieftainships in PNG. Their regalia \u2014 elaborate headdresses and bark cloth robes \u2014 can only be worn during prescribed ceremonies.',
+    dialects: ['West Mekeo', 'East Mekeo', 'North Mekeo'],
   }
 ];
 

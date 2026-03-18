@@ -1,22 +1,20 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { LANGUAGE_GROUPS, LanguageGroup } from './data/languages';
-import SearchFilters from './components/SearchFilters';
-import SidePanel from './components/SidePanel';
-import Legend from './components/Legend';
-import CTABanner from './components/CTABanner';
-import StatsPanel from './components/StatsPanel';
+import SearchBar from './components/SearchBar';
+import BottomDrawer from './components/BottomDrawer';
+import LeadCaptureModal from './components/LeadCaptureModal';
 
 const MapComponent = dynamic(() => import('./components/MapComponent'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-cora-dark">
+    <div className="w-full h-full flex items-center justify-center bg-surface-50">
       <div className="text-center">
-        <div className="w-12 h-12 border-4 border-forest-600 border-t-cora-accent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-forest-400 text-sm">Initialising map...</p>
+        <div className="w-10 h-10 border-[3px] border-surface-200 border-t-brand-500 rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-surface-400 text-sm">Loading map...</p>
       </div>
     </div>
   ),
@@ -24,10 +22,11 @@ const MapComponent = dynamic(() => import('./components/MapComponent'), {
 
 function MapPageInner() {
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageGroup | null>(null);
-  const [filteredLanguages, setFilteredLanguages] = useState<LanguageGroup[]>(LANGUAGE_GROUPS);
-  const [showCropZones, setShowCropZones] = useState(false);
+  const [showLeadForm, setShowLeadForm] = useState(false);
   const searchParams = useSearchParams();
+  const router = useRouter();
 
+  // Deep link support: ?lang=melpa
   useEffect(() => {
     const langId = searchParams.get('lang');
     if (langId) {
@@ -36,101 +35,69 @@ function MapPageInner() {
     }
   }, [searchParams]);
 
-  return (
-    <div className="flex flex-col h-screen w-screen bg-cora-dark overflow-hidden">
-      {/* Header */}
-      <header className="flex-shrink-0 bg-cora-dark border-b border-forest-800/60 px-4 py-2.5 z-40">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-green-900/30">
-              C
-            </div>
-            <div>
-              <h1 className="text-white font-bold text-sm leading-tight">
-                Papua New Guinea — Languages & Communities
-              </h1>
-              <p className="text-forest-600 text-[10px] hidden sm:block">
-                {LANGUAGE_GROUPS.length} language groups mapped · 800+ total languages · 22 provinces
-              </p>
-            </div>
-          </div>
-          <a
-            href="https://coraprojects.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:flex items-center gap-1.5 text-forest-500 hover:text-forest-300 text-[10px] transition-colors"
-          >
-            <span>Powered by CORA</span>
-            <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-          </a>
-        </div>
-      </header>
+  // Update URL when language is selected
+  const handleSelectLanguage = useCallback((lang: LanguageGroup | null) => {
+    setSelectedLanguage(lang);
+    if (lang) {
+      window.history.replaceState(null, '', `?lang=${lang.id}`);
+    } else {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
 
-      {/* Filters */}
-      <SearchFilters
-        onFilter={setFilteredLanguages}
-        onSelectLanguage={(lang) => setSelectedLanguage(lang)}
-        filteredCount={filteredLanguages.length}
+  const handleCloseDrawer = useCallback(() => {
+    setSelectedLanguage(null);
+    window.history.replaceState(null, '', window.location.pathname);
+  }, []);
+
+  return (
+    <div className="relative h-screen w-screen bg-surface-50 overflow-hidden">
+      {/* Full-screen map */}
+      <MapComponent
+        selectedLanguage={selectedLanguage}
+        onSelectLanguage={handleSelectLanguage}
+        filteredLanguages={LANGUAGE_GROUPS}
       />
 
-      {/* Map area */}
-      <div className="flex-1 relative overflow-hidden">
-        <MapComponent
-          selectedLanguage={selectedLanguage}
-          onSelectLanguage={setSelectedLanguage}
-          filteredLanguages={filteredLanguages}
-          showCropZones={showCropZones}
-        />
+      {/* Floating search bar */}
+      <SearchBar onSelectLanguage={handleSelectLanguage} />
 
-        {/* Legend */}
-        <Legend showCropZones={showCropZones} />
-
-        {/* Stats Panel */}
-        <StatsPanel />
-
-        {/* Crop Zone Toggle */}
-        <div className="absolute top-3 right-14 z-30">
-          <button
-            onClick={() => setShowCropZones(!showCropZones)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all backdrop-blur-sm ${
-              showCropZones
-                ? 'bg-amber-900/60 border border-amber-600/60 text-amber-200 shadow-sm'
-                : 'bg-cora-dark/80 border border-forest-700 text-forest-400 hover:border-forest-500 hover:text-forest-300'
-            }`}
-          >
-            <span className="text-sm leading-none">🌾</span>
-            <span className="hidden sm:inline">Crop Zones</span>
-          </button>
-        </div>
-
-        {/* Side Panel */}
-        <SidePanel
-          language={selectedLanguage}
-          onClose={() => setSelectedLanguage(null)}
-        />
-
-        {/* CTA Banner */}
-        <CTABanner />
+      {/* CORA badge - top left */}
+      <div className="absolute top-4 left-4 z-30 hidden sm:block">
+        <a
+          href="https://coraprojects.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2 shadow-float hover:shadow-float-lg transition-shadow group"
+        >
+          <div className="w-6 h-6 bg-brand-600 rounded-lg flex items-center justify-center text-[10px] font-bold text-white">C</div>
+          <span className="text-surface-500 text-xs font-medium group-hover:text-surface-700 transition-colors">Powered by CORA</span>
+        </a>
       </div>
 
-      {/* Footer */}
-      <footer className="flex-shrink-0 bg-cora-dark border-t border-forest-900/60 px-4 py-1.5">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <p className="text-forest-700 text-[10px]">
-            Data: SIL Ethnologue, UN HDX & community knowledge
-          </p>
-          <a
-            href="https://coraprojects.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-forest-700 hover:text-forest-500 text-[10px] transition-colors"
-          >
-            coraprojects.com
-          </a>
+      {/* Language count pill - bottom left (above attribution) */}
+      <div className="absolute bottom-8 left-3 z-30">
+        <div className="bg-white/85 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-float flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 bg-brand-500 rounded-full animate-pulse" />
+          <span className="text-surface-500 text-[11px]">
+            <span className="font-semibold text-surface-700">{LANGUAGE_GROUPS.length}</span> of 800+ languages mapped
+          </span>
         </div>
-      </footer>
+      </div>
+
+      {/* Bottom drawer */}
+      <BottomDrawer
+        language={selectedLanguage}
+        onClose={handleCloseDrawer}
+        onOpenLeadForm={() => setShowLeadForm(true)}
+      />
+
+      {/* Lead capture modal */}
+      <LeadCaptureModal
+        isOpen={showLeadForm}
+        onClose={() => setShowLeadForm(false)}
+        language={selectedLanguage}
+      />
     </div>
   );
 }
@@ -138,8 +105,8 @@ function MapPageInner() {
 export default function MapPage() {
   return (
     <Suspense fallback={
-      <div className="w-screen h-screen flex items-center justify-center bg-cora-dark">
-        <div className="w-12 h-12 border-4 border-forest-600 border-t-cora-accent rounded-full animate-spin" />
+      <div className="w-screen h-screen flex items-center justify-center bg-surface-50">
+        <div className="w-10 h-10 border-[3px] border-surface-200 border-t-brand-500 rounded-full animate-spin" />
       </div>
     }>
       <MapPageInner />

@@ -1,89 +1,80 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { LANGUAGE_GROUPS, LanguageGroup } from '../data/languages';
-import { CROP_ZONES, CROP_COLORS } from '../data/cropZones';
 
 interface MapComponentProps {
   selectedLanguage: LanguageGroup | null;
   onSelectLanguage: (lang: LanguageGroup | null) => void;
   filteredLanguages: LanguageGroup[];
-  showCropZones: boolean;
 }
 
 const FAMILY_COLORS: Record<string, string> = {
-  'Austronesian': '#06b6d4',
-  'Trans-New Guinea': '#f59e0b',
-  'Papuan': '#a78bfa',
-  'Creole': '#ffffff',
+  'Austronesian': '#0891b2',
+  'Trans-New Guinea': '#d97706',
+  'Papuan': '#7c3aed',
+  'Creole': '#6b7280',
 };
 
 const MAX_SPEAKERS = Math.max(...LANGUAGE_GROUPS.map(l => l.speakers));
 
-export default function MapComponent({ selectedLanguage, onSelectLanguage, filteredLanguages, showCropZones }: MapComponentProps) {
+export default function MapComponent({ selectedLanguage, onSelectLanguage, filteredLanguages }: MapComponentProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
-  const cropLayersRef = useRef<any[]>([]);
+  const selectedRingRef = useRef<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
+  // Store the latest callback in a ref so markers always have the current version
+  const onSelectRef = useRef(onSelectLanguage);
+  onSelectRef.current = onSelectLanguage;
+
+  const initMap = useCallback(async () => {
     if (!mapRef.current || leafletMapRef.current) return;
 
-    const initMap = async () => {
-      const L = (await import('leaflet')).default;
+    const L = (await import('leaflet')).default;
 
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-      });
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
 
-      const map = L.map(mapRef.current!, {
-        center: [-6.0, 147.0],
-        zoom: 6,
-        zoomControl: false,
-        attributionControl: true,
-        minZoom: 5,
-        maxZoom: 12,
-      });
+    const map = L.map(mapRef.current, {
+      center: [-6.3, 147.5],
+      zoom: 6,
+      zoomControl: false,
+      attributionControl: true,
+      minZoom: 5,
+      maxZoom: 12,
+    });
 
-      L.control.zoom({ position: 'topright' }).addTo(map);
+    // Zoom control top-right
+    L.control.zoom({ position: 'topright' }).addTo(map);
 
-      // Dark CartoDB base
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20,
-      }).addTo(map);
+    // Light CartoDB Voyager tiles (clean, Apple Maps-like)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20,
+    }).addTo(map);
 
-      // Subtle terrain overlay for topographic context
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri',
-        opacity: 0.12,
-      }).addTo(map);
+    leafletMapRef.current = map;
+    addMarkers(L, map, LANGUAGE_GROUPS);
+    setIsLoaded(true);
+  }, []);
 
-      leafletMapRef.current = map;
-      addMarkers(L, map, LANGUAGE_GROUPS, onSelectLanguage);
-      setIsLoaded(true);
-    };
-
+  useEffect(() => {
     initMap();
-
     return () => {
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
         leafletMapRef.current = null;
       }
     };
-  }, []);
+  }, [initMap]);
 
   // Update markers on filter change
   useEffect(() => {
     if (!leafletMapRef.current || !isLoaded) return;
 
-    const updateMarkers = async () => {
+    const update = async () => {
       const L = (await import('leaflet')).default;
       const map = leafletMapRef.current;
 
@@ -91,180 +82,133 @@ export default function MapComponent({ selectedLanguage, onSelectLanguage, filte
       markersRef.current = [];
 
       const filteredIds = new Set(filteredLanguages.map(l => l.id));
-      const visibleLanguages = LANGUAGE_GROUPS.filter(l => filteredIds.has(l.id));
-      addMarkers(L, map, visibleLanguages, onSelectLanguage);
+      const visible = LANGUAGE_GROUPS.filter(l => filteredIds.has(l.id));
+      addMarkers(L, map, visible);
     };
-
-    updateMarkers();
+    update();
   }, [filteredLanguages, isLoaded]);
 
-  // Crop zone overlay toggle
-  useEffect(() => {
-    if (!leafletMapRef.current || !isLoaded) return;
-
-    const updateCropZones = async () => {
-      const L = (await import('leaflet')).default;
-      const map = leafletMapRef.current;
-
-      // Remove existing crop layers
-      cropLayersRef.current.forEach(l => l.remove());
-      cropLayersRef.current = [];
-
-      if (showCropZones) {
-        CROP_ZONES.forEach(zone => {
-          const circle = L.circle([zone.lat, zone.lng], {
-            radius: zone.radius,
-            fillColor: zone.fillColor,
-            fillOpacity: 0.18,
-            color: zone.color,
-            weight: 1,
-            opacity: 0.35,
-            dashArray: '6 4',
-            interactive: false,
-          });
-          circle.addTo(map);
-          cropLayersRef.current.push(circle);
-
-          // Zone label
-          const label = L.divIcon({
-            html: `<div style="
-              color: ${zone.color};
-              font-size: 9px;
-              font-weight: 600;
-              text-shadow: 0 1px 4px rgba(0,0,0,0.95);
-              white-space: nowrap;
-              pointer-events: none;
-              text-align: center;
-              opacity: 0.7;
-              letter-spacing: 0.05em;
-              text-transform: uppercase;
-            ">${zone.crop}</div>`,
-            className: '',
-            iconAnchor: [15, 0],
-          });
-          const labelMarker = L.marker([zone.lat + 0.15, zone.lng], { icon: label, interactive: false });
-          labelMarker.addTo(map);
-          cropLayersRef.current.push(labelMarker);
-        });
-      }
-    };
-
-    updateCropZones();
-  }, [showCropZones, isLoaded]);
-
-  function addMarkers(L: any, map: any, languages: LanguageGroup[], onSelect: (lang: LanguageGroup | null) => void) {
-    // Sort so smaller circles render on top of larger ones
+  function addMarkers(L: any, map: any, languages: LanguageGroup[]) {
+    // Sort: large first so small ones render on top and are clickable
     const sorted = [...languages].sort((a, b) => b.speakers - a.speakers);
 
     sorted.forEach(lang => {
-      const color = FAMILY_COLORS[lang.family] || '#4ade80';
-      // Proportional radius: sqrt-scaled for area perception
-      const minR = 12000;
-      const maxR = 85000;
+      const color = FAMILY_COLORS[lang.family] || '#16a34a';
+
+      // Proportional pixel radius (8-28px range), sqrt-scaled for area perception
       const ratio = Math.sqrt(lang.speakers / MAX_SPEAKERS);
-      const radius = minR + ratio * (maxR - minR);
+      const pxRadius = 7 + ratio * 21;
 
-      // CORA outer pulse ring
-      if (lang.cora) {
-        // Dashed outer ring
-        const outerRing = L.circle([lang.lat, lang.lng], {
-          radius: radius * 1.8,
-          fillColor: '#4ade80',
-          fillOpacity: 0.06,
-          color: '#4ade80',
-          weight: 2,
-          opacity: 0.4,
-          dashArray: '8 6',
-          interactive: false,
-        });
-        outerRing.addTo(map);
-        markersRef.current.push(outerRing);
-
-        // Inner glow ring
-        const glowRing = L.circle([lang.lat, lang.lng], {
-          radius: radius * 1.35,
-          fillColor: '#4ade80',
-          fillOpacity: 0.1,
-          color: '#4ade80',
-          weight: 1.5,
-          opacity: 0.6,
-          interactive: false,
-        });
-        glowRing.addTo(map);
-        markersRef.current.push(glowRing);
-      }
-
-      // Main circle
-      const circle = L.circle([lang.lat, lang.lng], {
-        radius,
+      const marker = L.circleMarker([lang.lat, lang.lng], {
+        radius: pxRadius,
         fillColor: color,
-        fillOpacity: lang.cora ? 0.55 : 0.35,
-        color: lang.cora ? '#4ade80' : color,
-        weight: lang.cora ? 2.5 : 1.5,
-        opacity: 0.8,
+        fillOpacity: 0.5,
+        color: '#ffffff',
+        weight: 2,
+        opacity: 1,
       });
 
-      // Label
-      const fontSize = lang.speakers > 100000 ? '11px' : lang.speakers > 30000 ? '10px' : '9px';
-      const labelHtml = lang.cora
-        ? `<div style="display:flex;align-items:center;gap:3px;justify-content:center;">
-             <span style="font-size:12px;">🍃</span>
-             <span>${lang.name}</span>
-           </div>`
-        : `<span>${lang.name}</span>`;
+      // CORA: green ring indicator
+      if (lang.cora) {
+        const coraRing = L.circleMarker([lang.lat, lang.lng], {
+          radius: pxRadius + 5,
+          fillColor: 'transparent',
+          fillOpacity: 0,
+          color: '#16a34a',
+          weight: 2.5,
+          opacity: 0.7,
+          dashArray: '6 4',
+          interactive: false,
+        });
+        coraRing.addTo(map);
+        markersRef.current.push(coraRing);
+      }
 
+      // Text label
+      const fontSize = lang.speakers > 100000 ? 12 : lang.speakers > 30000 ? 11 : 10;
       const label = L.divIcon({
         html: `<div style="
-          color: white;
-          font-size: ${fontSize};
+          color: #1e293b;
+          font-size: ${fontSize}px;
           font-weight: 600;
-          text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.8);
           white-space: nowrap;
           pointer-events: none;
           text-align: center;
-        ">${labelHtml}</div>`,
+          text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 8px #fff;
+          line-height: 1;
+        ">${lang.name}</div>`,
         className: '',
-        iconAnchor: [0, -4],
+        iconAnchor: [0, -(pxRadius + 6)],
       });
-
       const labelMarker = L.marker([lang.lat, lang.lng], { icon: label, interactive: false });
 
-      circle.on('click', () => onSelect(lang));
-      circle.on('mouseover', () => {
-        circle.setStyle({ fillOpacity: 0.7, weight: 3 });
-      });
-      circle.on('mouseout', () => {
-        circle.setStyle({
-          fillOpacity: lang.cora ? 0.55 : 0.35,
-          weight: lang.cora ? 2.5 : 1.5,
-        });
+      // Interactions
+      marker.on('click', () => {
+        onSelectRef.current(lang);
       });
 
-      circle.addTo(map);
+      marker.on('mouseover', () => {
+        marker.setStyle({ fillOpacity: 0.8, weight: 3, color: color });
+      });
+
+      marker.on('mouseout', () => {
+        marker.setStyle({ fillOpacity: 0.5, weight: 2, color: '#ffffff' });
+      });
+
+      marker.addTo(map);
       labelMarker.addTo(map);
-      markersRef.current.push(circle, labelMarker);
+      markersRef.current.push(marker, labelMarker);
     });
   }
 
-  // Pan to selected language
+  // Fly to selected language + highlight ring
   useEffect(() => {
-    if (selectedLanguage && leafletMapRef.current) {
-      leafletMapRef.current.flyTo(
-        [selectedLanguage.lat, selectedLanguage.lng],
-        8,
-        { duration: 0.8 }
-      );
-    }
-  }, [selectedLanguage]);
+    if (!leafletMapRef.current || !isLoaded) return;
+
+    const update = async () => {
+      const L = (await import('leaflet')).default;
+      const map = leafletMapRef.current;
+
+      // Remove previous selection ring
+      if (selectedRingRef.current) {
+        selectedRingRef.current.remove();
+        selectedRingRef.current = null;
+      }
+
+      if (selectedLanguage) {
+        map.flyTo(
+          [selectedLanguage.lat, selectedLanguage.lng],
+          8,
+          { duration: 0.6 }
+        );
+
+        // Selection highlight ring
+        const ratio = Math.sqrt(selectedLanguage.speakers / MAX_SPEAKERS);
+        const pxRadius = 7 + ratio * 21;
+        const ring = L.circleMarker([selectedLanguage.lat, selectedLanguage.lng], {
+          radius: pxRadius + 4,
+          fillColor: '#16a34a',
+          fillOpacity: 0.15,
+          color: '#16a34a',
+          weight: 3,
+          opacity: 0.9,
+          interactive: false,
+        });
+        ring.addTo(map);
+        selectedRingRef.current = ring;
+      }
+    };
+    update();
+  }, [selectedLanguage, isLoaded]);
 
   return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full" />
       {!isLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-cora-dark">
+        <div className="absolute inset-0 flex items-center justify-center bg-surface-50">
           <div className="text-center">
-            <div className="w-12 h-12 border-4 border-forest-600 border-t-cora-accent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-forest-400 text-sm">Loading map...</p>
+            <div className="w-10 h-10 border-3 border-surface-200 border-t-brand-500 rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-surface-400 text-sm">Loading map...</p>
           </div>
         </div>
       )}

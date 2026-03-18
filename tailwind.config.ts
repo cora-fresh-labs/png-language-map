@@ -8,7 +8,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        forest: {
+        brand: {
           50: '#f0fdf4',
           100: '#dcfce7',
           200: '#bbf7d0',
@@ -19,15 +19,26 @@ const config: Config = {
           700: '#15803d',
           800: '#166534',
           900: '#14532d',
-          950: '#052e16',
         },
-        cora: {
-          green: '#1a4731',
-          dark: '#0d2818',
-          accent: '#4ade80',
-          gold: '#f59e0b',
-        }
-      }
+        surface: {
+          0: '#ffffff',
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          900: '#0f172a',
+        },
+      },
+      boxShadow: {
+        'float': '0 2px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06)',
+        'float-lg': '0 4px 24px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)',
+        'drawer': '0 -4px 32px rgba(0,0,0,0.12)',
+      },
     },
   },
   plugins: [],
