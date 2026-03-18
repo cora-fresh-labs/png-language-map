@@ -1,5 +1,6 @@
 'use client';
 
+import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { LANGUAGE_GROUPS, LanguageGroup } from '../data/languages';
 import { MEDICINE_PINS } from '../data/medicines';
